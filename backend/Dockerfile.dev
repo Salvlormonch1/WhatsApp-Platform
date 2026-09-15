@@ -1,0 +1,23 @@
+## Development Dockerfile — Quarkus Dev Mode with hot reload
+## Uses Maven from the alpine package manager (no mvnw needed)
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /project
+
+# Install Maven + curl (for health checks)
+RUN apk add --no-cache maven curl
+
+# Pre-download dependencies for faster rebuilds
+# (this layer is cached as long as pom.xml doesn't change)
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+
+EXPOSE 8080 5005
+
+# Quarkus dev mode — source is mounted as a volume in docker-compose.dev.yml
+# so hot reload works without rebuilding the image
+ENTRYPOINT ["mvn", "quarkus:dev", \
+  "-Dquarkus.http.host=0.0.0.0", \
+  "-Ddebug=true", \
+  "-DdebugHost=0.0.0.0", \
+  "-DdebugPort=5005"]

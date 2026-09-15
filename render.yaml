@@ -1,0 +1,113 @@
+# render.yaml — Despliegue completo en Render.com
+# Docs: https://render.com/docs/infrastructure-as-code
+#
+# Cómo usar:
+#   1. Sube este repo a GitHub (ver README.md)
+#   2. Render Dashboard → New → Blueprint → conecta el repo
+#   3. Render detecta este archivo y crea todo automáticamente
+#   4. Completa las variables marcadas con sync:false en el Dashboard
+
+databases:
+  - name: saas-postgres
+    databaseName: saasplatform
+    user: saasplatform
+    plan: free        # Gratis 90 días, luego $7/mes
+    region: oregon
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Backend — Quarkus 3.38 (Java, Docker multi-stage)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: saas-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: free        # Cold start ~30s; usar starter ($7/mes) para producción
+    healthCheckPath: /q/health/live
+    envVars:
+      # Base de datos — Render llena estos automáticamente desde la DB creada arriba
+      - key: QUARKUS_DATASOURCE_JDBC_URL
+        # Formato requerido: jdbc:postgresql://HOST:PORT/saasplatform
+        # En el dashboard: copia "Internal Database URL" y cambia "postgres://" por "jdbc:postgresql://"
+        sync: false
+      - key: QUARKUS_DATASOURCE_USERNAME
+        fromDatabase:
+          name: saas-postgres
+          property: user
+      - key: QUARKUS_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: saas-postgres
+          property: password
+
+      # JWT — claves RSA generadas en el contenedor al arrancar (ver backend/Dockerfile)
+      # IMPORTANTE: las claves RSA (privateKey.pem, publicKey.pem) se generan en el
+      # contenedor de Render. Son efímeras — si el servicio se redeploya, los tokens
+      # existentes expirarán. Para persistencia, usa Render Disks o Secret Files.
+      - key: JWT_EXPIRATION_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRATION_DAYS
+        value: "7"
+
+      # CORS — URL pública del frontend en Render (la conoces después del primer deploy)
+      # Formato: https://saas-frontend.onrender.com
+      - key: CORS_ORIGINS
+        sync: false
+
+      # WhatsApp Meta
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false   # El mismo valor que pongas en Meta for Developers
+      - key: WHATSAPP_APP_SECRET
+        sync: false   # App Secret de Meta (Settings → Basic)
+
+      # IA — Gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: AI_PROVIDER
+        value: gemini
+
+      # Email (opcional — puedes usar Gmail con App Password)
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false   # Gmail: usa una "App Password", no tu contraseña normal
+      - key: SMTP_FROM_ADDRESS
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: "Mi Plataforma"
+
+      # Quarkus — perfil de producción
+      - key: QUARKUS_PROFILE
+        value: prod
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js 15 (Node.js, sin Docker para simplicidad)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: saas-frontend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm ci && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      # URL del backend en Render — complétala tras el primer deploy del backend
+      # Formato: https://saas-backend.onrender.com/api/v1
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      # Igual que NEXT_PUBLIC_API_URL (el frontend en Render puede usar la URL pública)
+      - key: INTERNAL_API_URL
+        sync: false
+      # NextAuth
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false   # URL pública del frontend: https://saas-frontend.onrender.com

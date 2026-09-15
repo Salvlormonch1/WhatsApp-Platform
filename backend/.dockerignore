@@ -1,0 +1,23 @@
+# .dockerignore — backend
+# Excluye archivos pesados o innecesarios del contexto de build Docker
+# (aplica tanto a Dockerfile como a Dockerfile.dev)
+
+# Directorio de build/compilación (pesado, regenerado por Maven)
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

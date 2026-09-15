@@ -1,0 +1,19 @@
+package com.saasplatform.ai.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record ChatCompletionResponse(
+        String id,
+        List<ChatChoice> choices,
+        Usage usage
+) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Usage(
+            @JsonProperty("prompt_tokens") int promptTokens,
+            @JsonProperty("completion_tokens") int completionTokens,
+            @JsonProperty("total_tokens") int totalTokens
+    ) {}
+}
