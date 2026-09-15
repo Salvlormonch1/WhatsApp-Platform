@@ -9,6 +9,7 @@ import com.saasplatform.auth.dto.LoginRequest;
 import com.saasplatform.auth.dto.RegisterRequest;
 import com.saasplatform.business.domain.Business;
 import com.saasplatform.business.domain.BusinessType;
+import com.saasplatform.common.exception.BadRequestException;
 import com.saasplatform.common.exception.ConflictException;
 import com.saasplatform.common.exception.NotFoundException;
 import io.quarkus.elytron.security.common.BcryptUtil;
